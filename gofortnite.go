@@ -1,115 +1,54 @@
 package gofortnite
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"time"
+	"net/http"
+	"net/url"
 )
 
 type (
-	TRNRating struct {
-		Label        string  `json:"label"`
-		Field        string  `json:"field"`
-		Category     string  `json:"category"`
-		ValueInt     int64   `json:"valueInt"`
-		Value        string  `json:"value"`
-		Percentile   float64 `json:"percentile"`
-		DisplayValue string  `json:"displayValue"`
-	}
-
-	IntPercRankType struct {
-		Label        string  `json:"label"`
-		Field        string  `json:"field"`
-		Category     string  `json:"category"`
-		ValueInt     int64   `json:"valueInt"`
-		Value        string  `json:"value"`
-		Rank         int64   `json:"rank"`
-		Percentile   float64 `json:"percentile"`
-		DisplayValue string  `json:"displayValue"`
-	}
-
-	DecPercRankType struct {
-		Label        string  `json:"label"`
-		Field        string  `json:"field"`
-		Category     string  `json:"category"`
-		ValueDec     float64 `json:"valueDec"`
-		Value        string  `json:"value"`
-		Rank         int64   `json:"rank"`
-		Percentile   float64 `json:"percentile"`
-		DisplayValue string  `json:"displayValue"`
-	}
-
-	IntRankType struct {
-		Label        string `json:"label"`
-		Field        string `json:"field"`
-		Category     string `json:"category"`
-		ValueInt     int64  `json:"valueInt"`
-		Value        string `json:"value"`
-		Rank         int64  `json:"rank"`
-		DisplayValue string `json:"displayValue"`
-	}
-
-	PlayList struct {
-		TRNRating     TRNRating       `json:"trnRating"`
-		Score         IntPercRankType `json:"score"`
-		Top1          IntRankType
-		Top3          IntRankType
-		Top5          IntRankType
-		Top6          IntRankType
-		Top10         IntRankType
-		Top12         IntRankType
-		Top25         IntRankType
-		KD            DecPercRankType `json:"kd"`
-		WinRatio      DecRankType     `json:"winRatio"`
-		Matches       IntPercRankType `json:"matches"`
-		Kills         IntPercRankType `json:"kills"`
-		KPG           DecPercRankType `json:"kpg"`
-		ScorePerMatch DecPercRankType `json:"scorePerMatch"`
-	}
-
-	Stats struct {
-		PlayList
-	}
-
 	LifeTimeStats struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	}
 
 	RecentMatches struct {
-		ID            int64     `json:"id"`
-		AccountID     string    `json:"accountId"`
-		PlayList      string    `json:"platlist"`
-		Kills         int64     `json:"kills"`
-		MinutesPlayed int64     `json:"minutesPlayed"`
-		Top1          int64     `json:"top1"`
-		Top3          int64     `json:"top3"`
-		Top5          int64     `json:"top5"`
-		Top6          int64     `json:"top6"`
-		Top10         int64     `json:"top10"`
-		Top12         int64     `json:"top12"`
-		Top25         int64     `json"top25"`
-		Matches       int64     `json:"matches"`
-		DateCollected Time.time `json:"dateCollected"`
-		Score         int64     `json:"score"`
-		Platform      int64     `json:"platform"`
+		ID            int64  `json:"id"`
+		AccountID     string `json:"accountId"`
+		PlayList      string `json:"platlist"`
+		Kills         int64  `json:"kills"`
+		MinutesPlayed int64  `json:"minutesPlayed"`
+		Top1          int64  `json:"top1"`
+		Top3          int64  `json:"top3"`
+		Top5          int64  `json:"top5"`
+		Top6          int64  `json:"top6"`
+		Top10         int64  `json:"top10"`
+		Top12         int64  `json:"top12"`
+		Top25         int64  `json"top25"`
+		Matches       int64  `json:"matches"`
+		DateCollected string `json:"dateCollected"`
+		Score         int64  `json:"score"`
+		Platform      int64  `json:"platform"`
 	}
 
 	FNTApi struct {
-		AccountID        string          `json:"accountId"`
-		PlatformID       int64           `json:"platformId"`
-		PlatformName     string          `json:"platformName"`
-		PlatformNameLong string          `json:"platformNameLong"`
-		EpicUserHandle   string          `json:"epicUserHandle"`
-		Stats            Stats           `json:"stats"`
-		LifeTimeStats    []LifeTimeStats `json:"lifeTimeStats"`
-		RecentMatches    []RecentMatches `json:"recentMatches"`
+		AccountID        string                 `json:"accountId"`
+		PlatformID       int64                  `json:"platformId"`
+		PlatformName     string                 `json:"platformName"`
+		PlatformNameLong string                 `json:"platformNameLong"`
+		EpicUserHandle   string                 `json:"epicUserHandle"`
+		Stats            map[string]interface{} `json:"stats"`
+		LifeTimeStats    []LifeTimeStats        `json:"lifeTimeStats"`
+		RecentMatches    []RecentMatches        `json:"recentMatches"`
 	}
 
 	Fortnite struct {
-		client   *http.Client
-		Platform string
-		Token    string
+		client    *http.Client
+		Platform  string
+		Token     string
+		UserAgent string
 	}
 )
 
@@ -123,7 +62,7 @@ var (
 	baseURL, _ = url.Parse(Endpoint)
 )
 
-func NewFortnite(client *http.Client, platform, token string) (*Fortnite, error) {
+func NewFortnite(client *http.Client, platform, token, useragent string) (*Fortnite, error) {
 	if token == "" {
 		return nil, fmt.Errorf("[goFornite %s] Please initialize an API token to continue.", Version)
 	}
@@ -137,7 +76,11 @@ func NewFortnite(client *http.Client, platform, token string) (*Fortnite, error)
 		client = http.DefaultClient
 	}
 
-	return &Fornite{client: client, Platform: platform, Token: token}, nil
+	if useragent == "" {
+		useragent = UserAgent
+	}
+
+	return &Fortnite{client: client, Platform: platform, Token: token, UserAgent: useragent}, nil
 }
 
 func (fnt *Fortnite) do(resource string, opts url.Values) (*http.Response, error) {
@@ -161,13 +104,13 @@ func (fnt *Fortnite) do(resource string, opts url.Values) (*http.Response, error
 
 func (fnt *Fortnite) GetDetails(epicUserName, platform string) (*FNTApi, error) {
 	if platform == "" {
-		platform := fnt.Platform
+		platform = fnt.Platform
 	}
 	resource := fmt.Sprintf("%s/%s", platform, epicUserName)
 
-	resp, err := fnt.client.do(resource, nil)
+	resp, err := fnt.do(resource, nil)
 	if err != nil {
-		return nil, error
+		return nil, err
 	}
 	defer resp.Body.Close()
 
