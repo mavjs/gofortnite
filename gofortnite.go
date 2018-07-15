@@ -17,7 +17,7 @@ type (
 	RecentMatches struct {
 		ID            int64  `json:"id"`
 		AccountID     string `json:"accountId"`
-		PlayList      string `json:"platlist"`
+		PlayList      string `json:"playlist"`
 		Kills         int64  `json:"kills"`
 		MinutesPlayed int64  `json:"minutesPlayed"`
 		Top1          int64  `json:"top1"`
