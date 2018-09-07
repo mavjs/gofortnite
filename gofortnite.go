@@ -106,7 +106,30 @@ func (fnt *Fortnite) GetDetails(epicUserName, platform string) (*FNTApi, error) 
 	if platform == "" {
 		platform = fnt.Platform
 	}
+
 	resource := fmt.Sprintf("%s/%s", platform, epicUserName)
+
+	resp, err := fnt.do(resource, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var fntAPI *FNTApi
+	err = json.NewDecoder(resp.Body).Decode(&fntAPI)
+	return fntAPI, err
+}
+
+func (fnt *Fortnite) GetDetailsPlatformWrapped(epicUserName, platform string) (*FNTApi, error) {
+	if platform == "" {
+		platform = fnt.Platform
+	}
+
+	resource := fmt.Sprintf("%s/%s", platform, epicUserName)
+	if platform == "xbl" || platform == "psn" {
+		resource = fmt.Sprintf("%s/%s(%s)", platform, platform, epicUserName)
+	}
+
 
 	resp, err := fnt.do(resource, nil)
 	if err != nil {
